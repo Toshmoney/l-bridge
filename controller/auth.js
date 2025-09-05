@@ -93,7 +93,7 @@ const login = async (req, res) => {
     await userDetails.save();
 
     // remove password before sending back
-    const { password: _, ...user } = userDetails.toObject();
+    const { password: _, refreshToken: __, ...user } = userDetails.toObject();
 
     return res.status(200).json({
       message: "Login successful",
@@ -238,6 +238,93 @@ const logout = async (req, res) => {
   }
 };
 
+const profile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await User.findById(userId).select('-password -resetToken -resetExpires -refreshToken');
+    if (!user) {
+      return res.status(404).json({ error: "User not found", success: false });
+    }
+    res.status(200).json({ user, success: true });
+  } catch (error) {
+    console.error("Error fetching profile:", error);
+    res.status(500).json({ error: "Internal Server Error", success: false });
+  }
+};
+
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { name, email } = req.body;
+    const updates = {};
+
+    if (name) updates.name = name;
+    if (email) {
+      if (!/\S+@\S+\.\S+/.test(email)) {
+        return res.status(400).json({ error: "Invalid email format", success: false });
+      }
+      updates.email = email.toLowerCase();
+    }
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password -resetToken -resetExpires -refreshToken');
+    res.status(200).json({ user: updatedUser, success: true });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ error: "Internal Server Error", success: false });
+  }
+};
+
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "Current and new password (min 6 chars) are required", success: false });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found", success: false });
+    }
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: "Current password is incorrect", success: false });
+    }
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+    res.status(200).json({ message: "Password changed successfully", success: true });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ error: "Internal Server Error", success: false });
+  }
+};
+
+const getPublicProfile = async (req, res) => {
+  try {
+    const { name, email } = req.body;
+    if (!name && !email) {
+      return res.status(400).json({ error: "Name or email is required to search", success: false });
+    }
+    const query = {};
+    if (name) {
+      query.name = { $regex: name, $options: 'i' };
+    }
+    if (email) {
+      query.email = email.toLowerCase();
+    }
+    const users = await User.find(query).select('name email role createdAt');
+    if(users.length === 0) {
+      return res.status(404).json({ error: "No users found", success: false });
+    }
+    res.status(200).json({ users, success: true });
+  } catch (error) {
+    console.error("Error fetching public profiles:", error);
+    res.status(500).json({ error: "Internal Server Error", success: false });
+  }
+};
+
+
+
 
 module.exports = {
   register,
@@ -245,5 +332,9 @@ module.exports = {
   requestPasswordReset,
   resetPassword,
   refreshAccessToken,
-  logout
+  logout,
+  profile,
+  updateProfile,
+  changePassword,
+  getPublicProfile
 };
