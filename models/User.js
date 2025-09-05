@@ -7,7 +7,7 @@ const userSchema = new mongoose.Schema({
       match: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
     },
   password: { type: String, required: true },
-  role: { type: String, enum: ["client", "lawyer"], default: "client" },
+  role: { type: String, enum: ["client", "lawyer", "admin"], default: "client" },
   subscription: {
     plan: { type: String, default: "Free" },
     expiresAt: { type: Date },

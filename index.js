@@ -6,6 +6,8 @@ const morgan = require("morgan")
 const cors = require("cors")
 const bodyParser = require("body-parser");
 const connectDB = require("./db/connect");
+const authRoutes = require("./routes/authRoutes");
+
 
 
 // middlewares
@@ -18,6 +20,11 @@ dotenv.config();
 app.get("/test", (req, res)=>{
     res.json({msg: "Server working perfectly well!"})
 })
+
+
+// routes
+app.use("/api/auth", authRoutes);
+
 
 app.listen(port, async()=>{
     console.log(`server started at http://localhost:${port}`);
