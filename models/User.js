@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   },
   profilePicture: {type: String},
   profileDescription: {type: String},
+  refreshToken: String,
   resetToken: String,
   resetExpires: Date,
 }, { timestamps: true });

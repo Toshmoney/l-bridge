@@ -4,6 +4,7 @@ const nodemailer = require("nodemailer");
 const { validationResult } = require('express-validator');
 const crypto = require("crypto");
 const User = require('../models/User');
+const { generateTokens } = require('../middleware/Token');
 
 const frontendUrl = process.env.frontendUrl
 const register = async (req, res) => {
@@ -86,16 +87,21 @@ const login = async (req, res) => {
       return res.status(401).json({ error: "Invalid password", success: false });
     }
 
-    const token = jwt.sign(
-      { userId: userDetails._id, role: userDetails.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const { accessToken, refreshToken } = generateTokens(userDetails);
+
+    userDetails.refreshToken = refreshToken;
+    await userDetails.save();
 
     // remove password before sending back
     const { password: _, ...user } = userDetails.toObject();
 
-    return res.status(200).json({ message: "Login successful", token, user, success: true });
+    return res.status(200).json({
+      message: "Login successful",
+      accessToken,
+      refreshToken,
+      user,
+      success: true
+    });
   } catch (error) {
     console.error("Error logging in:", error);
     res.status(500).json({ error: "Internal Server Error", success: false });
@@ -185,9 +191,59 @@ const resetPassword = async (req, res) => {
 };
 
 
+const refreshAccessToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
+      return res.status(401).json({ error: "Refresh token required", success: false });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+
+    // Find user with this refresh token
+    const user = await User.findById(decoded.userId);
+    if (!user || user.refreshToken !== refreshToken) {
+      return res.status(403).json({ error: "Invalid refresh token", success: false });
+    }
+
+    // Generate new tokens
+    const { accessToken, refreshToken: newRefreshToken } = generateTokens(user);
+
+    user.refreshToken = newRefreshToken;
+    await user.save();
+
+    res.status(200).json({
+      accessToken,
+      refreshToken: newRefreshToken,
+      success: true
+    });
+  } catch (error) {
+    console.error("Error refreshing token:", error);
+    res.status(403).json({ error: "Invalid or expired refresh token", success: false });
+  }
+};
+
+
+const logout = async (req, res) => {
+  try {
+    const { userId } = req.body; 
+    const user = await User.findById(userId);
+    if (user) {
+      user.refreshToken = null;
+      await user.save();
+    }
+    res.status(200).json({ message: "Logged out successfully", success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Internal Server Error", success: false });
+  }
+};
+
+
 module.exports = {
   register,
   login,
   requestPasswordReset,
-  resetPassword
+  resetPassword,
+  refreshAccessToken,
+  logout
 };
