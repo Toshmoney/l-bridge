@@ -7,6 +7,8 @@ const cors = require("cors")
 const bodyParser = require("body-parser");
 const connectDB = require("./db/connect");
 const authRoutes = require("./routes/authRoutes");
+const templateRoutes = require("./routes/templateRoutes");
+const documentRoutes = require("./routes/documentRoutes");
 
 
 
@@ -24,6 +26,8 @@ app.get("/test", (req, res)=>{
 
 // routes
 app.use("/api/auth", authRoutes);
+app.use("/api/templates", templateRoutes);
+app.use("/api/documents", documentRoutes);
 
 
 app.listen(port, async()=>{
