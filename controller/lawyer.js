@@ -1,0 +1,145 @@
+const Lawyer = require("../models/Lawyer");
+const User = require("../models/User");
+const Consultation = require("../models/Consultation");
+const sendConsultationEmail = require("../helper/sendMail");
+
+// @desc Register as a lawyer
+// @route POST /api/lawyers
+// @access Private (only logged in user)
+const registerLawyer = async (req, res) => {
+  try {
+    const { specialization, barCertificate } = req.body;
+
+    // Check if user is already a lawyer
+    const existingLawyer = await Lawyer.findOne({ user: req.user.userId });
+    if (existingLawyer) {
+        return res.status(400).json({ message: "User is already registered as a lawyer" });
+    }
+
+    // Check if user exists
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
+    }
+
+    // Create new lawyer profile
+    const lawyer = new Lawyer({
+      user: req.user.userId,
+      specialization,
+      barCertificate,
+    });
+
+    await lawyer.save();
+    res.status(201).json(lawyer);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc Get all lawyers (with search & filter)
+// @route GET /api/lawyers
+// @access Public
+const getLawyers = async (req, res) => {
+  try {
+    const { search, specialization, sortBy = "rating", order = "desc" } = req.query;
+
+    console.log("Query params:", req.query);
+
+    let filter = {};
+    if (specialization) {
+      filter.specialization = { $in: [specialization] };
+    }
+    if (search) {
+      filter.$or = [
+        { specialization: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const lawyers = await Lawyer.find(filter)
+      .populate("user", "name email")
+      .sort({ [sortBy]: order === "desc" ? -1 : 1 });
+
+    res.json(lawyers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc Get single lawyer profile
+// @route GET /api/lawyers/:id
+// @access Public
+const getLawyerById = async (req, res) => {
+  try {
+    const lawyer = await Lawyer.findById(req.params.id)
+      .populate("user", "name email")
+      .populate("consultations");
+
+    if (!lawyer) return res.status(404).json({ message: "Lawyer not found" });
+
+    res.json(lawyer);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const bookConsultation = async (req, res) => {
+  try {
+    const { lawyerId, topic, details, scheduledAt } = req.body;
+
+    // Check lawyer exists
+    const lawyer = await Lawyer.findById(lawyerId).populate("user", "name email");
+    if (!lawyer) return res.status(404).json({ message: "Lawyer not found" });
+
+    // Create consultation
+    const consultation = new Consultation({
+      lawyer: lawyer._id,
+      user: req.user.userId,
+      topic,
+      details,
+      scheduledAt,
+    });
+
+    await consultation.save();
+
+    // Send email notification to lawyer
+    const client = await User.findById(req.user.userId);
+    await sendConsultationEmail(lawyer.user.email, lawyer.user.name, client.name, topic, scheduledAt);
+
+    res.status(201).json({
+      message: "Consultation booked successfully",
+      consultation,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+// @desc Verify a lawyer (Admin only)
+// @route PATCH /api/lawyers/:id/verify
+// @access Private (Admin)
+const verifyLawyer = async (req, res) => {
+  try {
+    const lawyer = await Lawyer.findById(req.params.id);
+    if (!lawyer) return res.status(404).json({ message: "Lawyer not found" });
+
+    lawyer.verified = true;
+    await lawyer.save();
+
+    res.json({ message: "Lawyer verified", lawyer });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+
+module.exports = {
+  registerLawyer,
+  getLawyers,
+  getLawyerById,
+  verifyLawyer,
+  bookConsultation
+};

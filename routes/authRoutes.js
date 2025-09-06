@@ -20,12 +20,12 @@ router.route("/reset-password")
 router.route("/register").post(register);
 router.route("/login").post(login);
 router.route("/refresh-token").post(refreshAccessToken);
-router.route("/logout").post(logout);
+router.route("/logout").post(isLoggin, logout);
 router.route("/profile")
   .get(isLoggin, profile)
   .patch(isLoggin, updateProfile)
 
-router.route("/change-password").post(changePassword);
+router.route("/change-password").post(isLoggin, changePassword);
 router.route("/user").get(getPublicProfile);
 
 module.exports = router;

@@ -1,4 +1,4 @@
-import express from "express";
+const express = require ("express");
 const {getTemplates, getTemplateByType} = require("../controller/documents");
 const { isLoggin } = require("../middleware/Authenticate");
 

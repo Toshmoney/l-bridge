@@ -4,6 +4,18 @@ const path = require("path");
 const fs = require("fs");
 const templates = require("../templates/documentTemplates");
 const { fillTemplate } = require("../utils/templateEngine");
+const {
+  Document: WordDoc,
+ Packer,
+  Paragraph,
+  TextRun,
+  HeadingLevel,
+  AlignmentType,
+  Table,
+  TableRow,
+  TableCell,
+  WidthType,
+} = require("docx");
 
 
 // Create new document
@@ -19,7 +31,7 @@ const createDocument = async (req, res) => {
     const content = fillTemplate(template.content, fields);
 
     const document = await Document.create({
-      user: req.user._id,
+      user: req.user.userId,
       title: title || template.title,
       templateType,
       fields,
@@ -35,7 +47,7 @@ const createDocument = async (req, res) => {
 const downloadDocumentPDF = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
-    if (!document || document.user.toString() !== req.user._id.toString()) {
+    if (!document || document.user.toString() !== req.user.userId.toString()) {
       return res.status(404).json({ message: "Document not found" });
     }
 
@@ -52,7 +64,7 @@ const downloadDocumentPDF = async (req, res) => {
     doc.pipe(stream);
 
     // Header
-    doc.fontSize(20).text("MobiDocs - Legal Document", { align: "center" });
+    doc.fontSize(20).text("Legal Document", { align: "center" });
     doc.moveDown();
 
     // Title
@@ -86,10 +98,137 @@ const downloadDocumentPDF = async (req, res) => {
   }
 };
 
+//Download document as Word (.docx)
+const downloadDocumentWord = async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+    if (!document || document.user.toString() !== req.user.userId.toString()) {
+      return res.status(404).json({ message: "Document not found" });
+    }
+
+    const fileName = `${document.title.replace(/\s+/g, "_")}_${document._id}.docx`;
+    const filePath = path.resolve(`./tmp/${fileName}`);
+    if (!fs.existsSync("./tmp")) fs.mkdirSync("./tmp");
+
+    // Split content into paragraphs
+    const paragraphs = document.content.split("\n").map((line) => {
+      return new Paragraph({
+        children: [new TextRun(line)],
+        spacing: { after: 200 },
+      });
+    });
+
+    // Create Word document
+  const wordDoc = new WordDoc({
+  sections: [
+    {
+      properties: {
+        page: {
+          margin: { top: 720, right: 720, bottom: 720, left: 720 }, // 0.5"
+        },
+        // ✅ Force white background
+        background: {
+          color: "FFFFFF", 
+        },
+      },
+      children: [
+        // Header
+        new Paragraph({
+          text: "MobiDocs — Legal Document",
+          heading: HeadingLevel.HEADING_1,
+          alignment: AlignmentType.CENTER,
+        }),
+        new Paragraph({ text: "", spacing: { after: 120 } }),
+
+        // Title
+        new Paragraph({
+          alignment: AlignmentType.CENTER,
+          children: [
+            new TextRun({
+              text: document.title,
+              bold: true,
+              underline: {},
+              size: 28,
+            }),
+          ],
+        }),
+        new Paragraph({ text: "", spacing: { after: 240 } }),
+
+        // Content
+        ...paragraphs,
+
+        new Paragraph({ text: "", spacing: { after: 240 } }),
+
+        // Signatures block
+        new Paragraph({
+          text: "Signatures",
+          heading: HeadingLevel.HEADING_2,
+        }),
+        new Paragraph({ text: "", spacing: { after: 120 } }),
+
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph("Employer:"),
+                    new Paragraph(""),
+                    new Paragraph("________________________"),
+                    new Paragraph("Name & Signature"),
+                  ],
+                }),
+                new TableCell({
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  children: [
+                    new Paragraph("Employee:"),
+                    new Paragraph(""),
+                    new Paragraph("________________________"),
+                    new Paragraph("Name & Signature"),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+
+        new Paragraph({ text: "", spacing: { after: 240 } }),
+
+        // Footer
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          children: [
+            new TextRun({
+              text: `Generated on: ${new Date(document.createdAt).toLocaleDateString()}`,
+              italics: true,
+              size: 20,
+            }),
+          ],
+        }),
+      ],
+    },
+  ],
+});
+
+    const buffer = await Packer.toBuffer(wordDoc);
+    fs.writeFileSync(filePath, buffer);
+
+    res.download(filePath, fileName, (err) => {
+      if (err) console.error("Download error:", err);
+      fs.unlinkSync(filePath);
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 // Get all documents for logged-in user
 const getUserDocuments = async (req, res) => {
   try {
-    const documents = await Document.find({ user: req.user._id });
+    const documents = await Document.find({ user: req.user.userId }).sort({ createdAt: -1 }).populate("user", "name email _id");
     res.json(documents);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -100,7 +239,7 @@ const getUserDocuments = async (req, res) => {
 const getSingleDocument = async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
-    if (!document || document.user.toString() !== req.user._id.toString()) {
+    if (!document || document.user.toString() !== req.user.userId.toString()) {
       return res.status(404).json({ message: "Document not found" });
     }
     res.json(document);
@@ -145,4 +284,4 @@ const getTemplateByType = async (req, res) => {
 
 
 
-module.exports = { createDocument, getUserDocuments, getSingleDocument, downloadDocumentPDF, getTemplates, getTemplateByType };
+module.exports = { createDocument, getUserDocuments, getSingleDocument, downloadDocumentPDF, getTemplates, getTemplateByType, downloadDocumentWord };

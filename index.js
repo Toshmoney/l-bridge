@@ -9,6 +9,8 @@ const connectDB = require("./db/connect");
 const authRoutes = require("./routes/authRoutes");
 const templateRoutes = require("./routes/templateRoutes");
 const documentRoutes = require("./routes/documentRoutes");
+const customTemplateRoutes = require("./routes/customTemplateRoutes");
+const lawyerRoutes = require("./routes/lawyerRoutes");
 
 
 
@@ -28,6 +30,8 @@ app.get("/test", (req, res)=>{
 app.use("/api/auth", authRoutes);
 app.use("/api/templates", templateRoutes);
 app.use("/api/documents", documentRoutes);
+app.use("/api/custom-templates", customTemplateRoutes);
+app.use("/api/lawyers", lawyerRoutes);
 
 
 app.listen(port, async()=>{

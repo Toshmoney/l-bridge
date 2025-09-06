@@ -5,6 +5,7 @@ const { validationResult } = require('express-validator');
 const crypto = require("crypto");
 const User = require('../models/User');
 const { generateTokens } = require('../middleware/Token');
+const { log } = require('console');
 
 const frontendUrl = process.env.frontendUrl
 const register = async (req, res) => {
@@ -37,7 +38,7 @@ const register = async (req, res) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ error: "User with this email already exists", success:false, user: existingUser });
+      return res.status(400).json({ error: "You already have an account, pls login to continue", success:false });
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -234,6 +235,8 @@ const logout = async (req, res) => {
     }
     res.status(200).json({ message: "Logged out successfully", success: true });
   } catch (error) {
+    console.log(error.message);
+    
     res.status(500).json({ error: "Internal Server Error", success: false });
   }
 };
