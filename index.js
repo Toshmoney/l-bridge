@@ -18,7 +18,8 @@ const consultationRoutes = require("./routes/consultation");
 // middlewares
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(express.json());
-app.use(cors())
+app.use(cors("*"));
+
 app.use(morgan("dev"));
 dotenv.config();
 

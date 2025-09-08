@@ -134,7 +134,7 @@ const downloadDocumentWord = async (req, res) => {
       children: [
         // Header
         new Paragraph({
-          text: "MobiDocs — Legal Document",
+          text: "Lawbridge— Legal Document",
           heading: HeadingLevel.HEADING_1,
           alignment: AlignmentType.CENTER,
         }),
