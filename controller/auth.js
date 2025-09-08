@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const User = require('../models/User');
 const { generateTokens } = require('../middleware/Token');
 const { log } = require('console');
+const { sendWelcomeEmail } = require('../helper/sendMail');
 
 const frontendUrl = process.env.frontendUrl
 const register = async (req, res) => {
@@ -57,6 +58,7 @@ const register = async (req, res) => {
 
     // remove the password
     const { password: _, ...userData } = newUser.toObject();
+    await sendWelcomeEmail(newUser.name, newUser.email);
 
     return res.status(201).json({ message: "User created successfully", token, user: userData, success : true });
   } catch (error) {

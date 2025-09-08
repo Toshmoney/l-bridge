@@ -1,11 +1,10 @@
 const Lawyer = require("../models/Lawyer");
 const User = require("../models/User");
 const Consultation = require("../models/Consultation");
-const sendConsultationEmail = require("../helper/sendMail");
+const {sendConsultationEmail} = require("../helper/sendMail");
 
-// @desc Register as a lawyer
-// @route POST /api/lawyers
-// @access Private (only logged in user)
+
+
 const registerLawyer = async (req, res) => {
   try {
     const { specialization, barCertificate } = req.body;
@@ -36,9 +35,7 @@ const registerLawyer = async (req, res) => {
   }
 };
 
-// @desc Get all lawyers (with search & filter)
-// @route GET /api/lawyers
-// @access Public
+
 const getLawyers = async (req, res) => {
   try {
     const { search, specialization, sortBy = "rating", order = "desc" } = req.query;
@@ -65,9 +62,7 @@ const getLawyers = async (req, res) => {
   }
 };
 
-// @desc Get single lawyer profile
-// @route GET /api/lawyers/:id
-// @access Public
+
 const getLawyerById = async (req, res) => {
   try {
     const lawyer = await Lawyer.findById(req.params.id)
@@ -114,11 +109,24 @@ const bookConsultation = async (req, res) => {
   }
 };
 
+const getConsultations = async (req, res) => {
+  try {
+    const consultations = await Consultation.find({ user: req.user.userId })
+      .populate({path: "lawyer", populate: { path: "user", select: "name" }})
+      .populate("user", "name");
+      if (!consultations || consultations.length === 0) {
+        return res.status(404).json({ message: "No consultations found" });
+      }
+    res.json(consultations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
-// @desc Verify a lawyer (Admin only)
-// @route PATCH /api/lawyers/:id/verify
-// @access Private (Admin)
+
+
+
 const verifyLawyer = async (req, res) => {
   try {
     const lawyer = await Lawyer.findById(req.params.id);
@@ -141,5 +149,6 @@ module.exports = {
   getLawyers,
   getLawyerById,
   verifyLawyer,
-  bookConsultation
+  bookConsultation,
+  getConsultations
 };
