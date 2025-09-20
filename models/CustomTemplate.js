@@ -12,18 +12,25 @@ const customTemplateSchema = new mongoose.Schema(
       required: true,
     },
     fields: {
-      type: [String], // ["partyA", "partyB", "agreementDate"]
+      type: [String], // e.g ["partyA", "partyB", "agreementDate"]
       required: true,
     },
     content: {
       type: String, // e.g. "This agreement is made between {{partyA}} and {{partyB}}..."
       required: true,
     },
+    price: {
+      type: Number,
+      default: 0, // Free by default, can be set by admin later
+    },
     visibility: {
       type: String,
       enum: ["private", "public"], // private = only user, public = platform-wide
       default: "private",
     },
+    templateType: {
+      type: String,
+    }
   },
   { timestamps: true }
 );

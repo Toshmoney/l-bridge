@@ -8,12 +8,19 @@ const {sendConsultationEmail} = require("../helper/sendMail");
 const registerLawyer = async (req, res) => {
   try {
     const { specialization, barCertificate } = req.body;
-
-    // Check if user is already a lawyer
-    const existingLawyer = await Lawyer.findOne({ user: req.user.userId });
-    if (existingLawyer) {
-        return res.status(400).json({ message: "User is already registered as a lawyer" });
+    if (!specialization || specialization.length === 0 || !barCertificate) {
+      return res.status(400).json({ message: "Specialization and bar certificate are required" });
     }
+
+    // if specialization is not an array, convert it to an array
+    const specializationArray = Array.isArray(specialization) ? specialization : [specialization];
+    
+    // convert all specialization first letter to uppercase and rest to lowercase and if two words, capitalize both
+    const formattedSpecialization = specializationArray.map(spec => {
+        return spec.split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
+    });
+
+    req.body.specialization = formattedSpecialization;
 
     // Check if user exists
     const user = await User.findById(req.user.userId);
@@ -21,11 +28,22 @@ const registerLawyer = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
     }
 
+    // Check if user is already a lawyer
+    const existingLawyer = await Lawyer.findOne({ user: req.user.userId });
+    if (existingLawyer) {
+        return res.status(400).json({ message: "You already have a lawyer profile" });
+    }
+
+    if(user.role != "lawyer" && user.role != "admin"){
+        user.role = "lawyer";
+        await user.save();
+    }
+
     // Create new lawyer profile
     const lawyer = new Lawyer({
       user: req.user.userId,
       specialization,
-      barCertificate,
+      barCertificate
     });
 
     await lawyer.save();
@@ -53,7 +71,7 @@ const getLawyers = async (req, res) => {
     }
 
     const lawyers = await Lawyer.find(filter)
-      .populate("user", "name email")
+      .populate("user", "name profileDescription profilePicture")
       .sort({ [sortBy]: order === "desc" ? -1 : 1 });
 
     res.json(lawyers);
@@ -66,7 +84,7 @@ const getLawyers = async (req, res) => {
 const getLawyerById = async (req, res) => {
   try {
     const lawyer = await Lawyer.findById(req.params.id)
-      .populate("user", "name email")
+      .populate("user", "name profileDescription profilePicture")
       .populate("consultations");
 
     if (!lawyer) return res.status(404).json({ message: "Lawyer not found" });
@@ -87,7 +105,7 @@ const bookConsultation = async (req, res) => {
 
     // Create consultation
     const consultation = new Consultation({
-      lawyer: lawyer._id,
+      lawyer: lawyerId,
       user: req.user.userId,
       topic,
       details,
@@ -123,6 +141,62 @@ const getConsultations = async (req, res) => {
   }
 };
 
+// get single consultation by id
+
+const getConsultationById = async (req, res) => {
+  try {
+    const consultation = await Consultation.findById(req.params.id)
+      .populate({ path: "lawyer", populate: { path: "user", select: "name" } })
+      .populate("user", "name email");
+    if (!consultation) {
+      return res.status(404).json({ message: "Consultation not found" });
+    }
+    res.json(consultation);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getLawyerConsultations = async (req, res) => {
+  try {
+    // Find lawyer record for this logged-in user
+    const lawyer = await Lawyer.findOne({ user: req.user.userId });
+    if (!lawyer) {
+      return res.status(404).json({ message: "Lawyer profile not found" });
+    }
+
+    // Find consultations linked to this lawyer
+    const consultations = await Consultation.find({ lawyer: lawyer._id })
+      .populate({ path: "lawyer", populate: { path: "user", select: "name" } })
+      .populate("user", "name");
+
+    if (!consultations || consultations.length === 0) {
+      return res.status(404).json({ message: "No consultations found" });
+    }
+
+    res.json(consultations);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// get single lawyer's consultation by id
+
+const getLawyerConsultationById = async (req, res) => {
+  try {
+    const consultation = await Consultation.findById(req.params.id)
+      .populate({ path: "lawyer", populate: { path: "user", select: "name" } })
+      .populate("user", "name email");
+    if (!consultation) {
+      return res.status(404).json({ message: "Consultation not found" });
+    }
+    res.json(consultation);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 
 
@@ -150,5 +224,8 @@ module.exports = {
   getLawyerById,
   verifyLawyer,
   bookConsultation,
-  getConsultations
+  getConsultations,
+  getLawyerConsultations,
+  getLawyerConsultationById,
+  getConsultationById
 };

@@ -6,7 +6,7 @@ const templates = {
       and {{tenant}} ("Tenant") for the property located at {{address}}.
       
       The tenancy shall last for a period of {{duration}} months 
-      commencing on {{startDate}}. The agreed rent is ₦{{rent}} 
+      commencing on {{startDate}}. The agreed rent is N{{rent}} 
       payable monthly in advance.
       
       Signed,
@@ -23,7 +23,7 @@ const templates = {
       and {{employee}} ("Employee").
       
       The Employee agrees to work as a {{position}} starting on {{startDate}}, 
-      with a monthly salary of ₦{{salary}}.
+      with a monthly salary of N{{salary}}.
       
       Signed,
       Employer: __________________

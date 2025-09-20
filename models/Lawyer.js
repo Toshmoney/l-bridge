@@ -5,7 +5,8 @@ const lawyerSchema = new mongoose.Schema({
   barCertificate: { type: String, required: true },
   verified: { type: Boolean, default: false },
   rating: { type: Number, default: 0 },
-  consultations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Consultation" }]
+  consultations: [{ type: mongoose.Schema.Types.ObjectId, ref: "Consultation" }],
+  balance: { type: Number, default: 0 },
 }, { timestamps: true });
 
 const Lawyer = mongoose.model("Lawyer", lawyerSchema);

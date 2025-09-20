@@ -98,6 +98,8 @@ const login = async (req, res) => {
     // remove password before sending back
     const { password: _, refreshToken: __, ...user } = userDetails.toObject();
 
+    console.log("User logged in:", accessToken);
+    
     return res.status(200).json({
       message: "Login successful",
       accessToken,

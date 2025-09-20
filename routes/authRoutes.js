@@ -28,4 +28,11 @@ router.route("/profile")
 router.route("/change-password").post(isLoggin, changePassword);
 router.route("/user").get(getPublicProfile);
 
+router.get("/verify-token", isLoggin, (req, res) => {
+  res.json({
+    valid: true,
+    user: req.user,
+  });
+});
+
 module.exports = router;

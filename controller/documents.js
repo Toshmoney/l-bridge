@@ -16,33 +16,61 @@ const {
   TableCell,
   WidthType,
 } = require("docx");
+const CustomTemplate = require("../models/CustomTemplate");
+const { log } = require("console");
 
 
 // Create new document
 const createDocument = async (req, res) => {
   try {
-    const { title, templateType, fields } = req.body;
+    const { title, templateType, fields, templateMode } = req.body;
 
-    if (!templates[templateType]) {
-      return res.status(400).json({ message: "Invalid template type" });
+    let template;
+    let content;
+    let customTemplate;
+
+
+    if (templateMode === "system") {
+      // 🟢 System templates
+      if (!templates[templateType]) {
+        return res.status(400).json({ message: "Invalid template type" });
+      }
+      template = templates[templateType];
+      content = fillTemplate(template.content, fields);
+
+    } else if (templateMode === "custom") {
+      // 🟢 Custom templates (from DB)
+      customTemplate = await CustomTemplate.findById(req.body.customTemplateId);
+
+      console.log("Custom Template:", customTemplate);
+
+      if (!customTemplate) {
+        return res.status(404).json({ message: "Custom template not found" });
+      }
+
+      template = customTemplate;
+      content = fillTemplate(customTemplate.content, fields);
+    } else {
+      return res.status(400).json({ message: "Invalid template mode" });
     }
 
-    const template = templates[templateType];
-    const content = fillTemplate(template.content, fields);
-
+    // Save document
     const document = await Document.create({
       user: req.user.userId,
       title: title || template.title,
-      templateType,
+      templateType: customTemplate ? customTemplate.templateType : templateType,
       fields,
       content,
+      status: "completed",
     });
 
     res.status(201).json(document);
   } catch (error) {
+    console.error("Create Document Error:", error);
     res.status(500).json({ message: error.message });
   }
-}
+};
+
 
 const downloadDocumentPDF = async (req, res) => {
   try {
@@ -63,18 +91,15 @@ const downloadDocumentPDF = async (req, res) => {
     const stream = fs.createWriteStream(filePath);
     doc.pipe(stream);
 
-    // Header
-    doc.fontSize(20).text("Legal Document", { align: "center" });
-    doc.moveDown();
-
-    // Title
-    doc.fontSize(16).text(document.title, { underline: true });
+    // Header₦
+    doc.fontSize(20).text(document.title, { align: "center" });
     doc.moveDown();
 
     // Content
     doc.fontSize(12).text(document.content, {
       align: "justify",
       lineGap: 6,
+      align: "center"
     });
 
     // Footer
@@ -134,25 +159,11 @@ const downloadDocumentWord = async (req, res) => {
       children: [
         // Header
         new Paragraph({
-          text: "Lawbridge— Legal Document",
+          text: document.title,
           heading: HeadingLevel.HEADING_1,
           alignment: AlignmentType.CENTER,
         }),
         new Paragraph({ text: "", spacing: { after: 120 } }),
-
-        // Title
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          children: [
-            new TextRun({
-              text: document.title,
-              bold: true,
-              underline: {},
-              size: 28,
-            }),
-          ],
-        }),
-        new Paragraph({ text: "", spacing: { after: 240 } }),
 
         // Content
         ...paragraphs,
@@ -166,33 +177,33 @@ const downloadDocumentWord = async (req, res) => {
         }),
         new Paragraph({ text: "", spacing: { after: 120 } }),
 
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: [
-            new TableRow({
-              children: [
-                new TableCell({
-                  width: { size: 50, type: WidthType.PERCENTAGE },
-                  children: [
-                    new Paragraph("Employer:"),
-                    new Paragraph(""),
-                    new Paragraph("________________________"),
-                    new Paragraph("Name & Signature"),
-                  ],
-                }),
-                new TableCell({
-                  width: { size: 50, type: WidthType.PERCENTAGE },
-                  children: [
-                    new Paragraph("Employee:"),
-                    new Paragraph(""),
-                    new Paragraph("________________________"),
-                    new Paragraph("Name & Signature"),
-                  ],
-                }),
-              ],
-            }),
-          ],
-        }),
+        // new Table({
+        //   width: { size: 100, type: WidthType.PERCENTAGE },
+        //   rows: [
+        //     new TableRow({
+        //       children: [
+        //         new TableCell({
+        //           width: { size: 50, type: WidthType.PERCENTAGE },
+        //           children: [
+        //             new Paragraph("Employer:"),
+        //             new Paragraph(""),
+        //             new Paragraph("________________________"),
+        //             new Paragraph("Name & Signature"),
+        //           ],
+        //         }),
+        //         new TableCell({
+        //           width: { size: 50, type: WidthType.PERCENTAGE },
+        //           children: [
+        //             new Paragraph("Employee:"),
+        //             new Paragraph(""),
+        //             new Paragraph("________________________"),
+        //             new Paragraph("Name & Signature"),
+        //           ],
+        //         }),
+        //       ],
+        //     }),
+        //   ],
+        // }),
 
         new Paragraph({ text: "", spacing: { after: 240 } }),
 

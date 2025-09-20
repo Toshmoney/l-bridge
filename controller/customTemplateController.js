@@ -2,9 +2,9 @@ const CustomTemplate = require("../models/CustomTemplate");
 // Create a new custom template
 const createCustomTemplate = async (req, res) => {
   try {
-    const { title, fields, content, visibility } = req.body;
+    const { title, fields, content, visibility, templateType } = req.body;
 
-    if (!title || !fields || !content) {
+    if (!title || !fields || !content || !templateType) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
@@ -13,6 +13,7 @@ const createCustomTemplate = async (req, res) => {
       title,
       fields,
       content,
+      templateType,
       visibility: visibility || "private",
     });
 
@@ -28,6 +29,9 @@ const getCustomTemplates = async (req, res) => {
     const templates = await CustomTemplate.find({
       $or: [{ visibility: "public" }, { user: req.user._id }],
     }).populate("user", "name role");
+    if (!templates || templates.length === 0) {
+      return res.status(404).json({ message: "No templates found" });
+    }
 
     res.json(templates);
   } catch (error) {
@@ -35,6 +39,18 @@ const getCustomTemplates = async (req, res) => {
   }
 };
 
+// get user owned templates
+const getUserOwnedCustomTemplates = async (req, res) => {
+  try {
+    const templates = await CustomTemplate.find({ user: req.user.userId }).populate("user", "name role");
+    if (!templates || templates.length === 0) {
+      return res.status(404).json({ message: "No templates found" });
+    }
+    res.json(templates);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 // Get single custom template
 const getCustomTemplateById = async (req, res) => {
   try {
@@ -103,4 +119,10 @@ const deleteCustomTemplate = async (req, res) => {
 };
 
 
-module.exports = { createCustomTemplate, getCustomTemplates, getCustomTemplateById, updateCustomTemplate, deleteCustomTemplate };
+module.exports = {
+  createCustomTemplate,
+  getUserOwnedCustomTemplates,
+  getCustomTemplates,
+  getCustomTemplateById,
+  updateCustomTemplate,
+  deleteCustomTemplate };
