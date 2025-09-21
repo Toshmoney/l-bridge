@@ -11,6 +11,7 @@ const { login,
   getPublicProfile
 } = require("../controller/auth");
 const { isLoggin, isAdmin } = require("../middleware/Authenticate");
+const upload = require("../utils/multer")
 const router = express.Router();
 
 router.route("/reset-password")
@@ -23,7 +24,7 @@ router.route("/refresh-token").post(refreshAccessToken);
 router.route("/logout").post(isLoggin, logout);
 router.route("/profile")
   .get(isLoggin, profile)
-  .patch(isLoggin, updateProfile)
+  .patch(isLoggin, upload.single("profilePicture"), updateProfile)
 
 router.route("/change-password").post(isLoggin, changePassword);
 router.route("/user").get(getPublicProfile);

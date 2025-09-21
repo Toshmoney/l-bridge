@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const User = require('../models/User');
 const { generateTokens } = require('../middleware/Token');
 const { log } = require('console');
+const cloudinary = require("../utils/cloudinary")
 const { sendWelcomeEmail } = require('../helper/sendMail');
 
 const frontendUrl = process.env.frontendUrl
@@ -262,23 +263,83 @@ const profile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { name, email } = req.body;
-    const updates = {};
+    const user = req.user;
+    const { name, email, profileDescription } = req.body;
+    const updates = req.body ? { ...req.body } : {};
 
     if (name) updates.name = name;
+
     if (email) {
       if (!/\S+@\S+\.\S+/.test(email)) {
         return res.status(400).json({ error: "Invalid email format", success: false });
       }
       updates.email = email.toLowerCase();
     }
-    const updatedUser = await User.findByIdAndUpdate(userId, updates, { new: true }).select('-password -resetToken -resetExpires -refreshToken');
-    res.status(200).json({ user: updatedUser, success: true });
+
+    if (profileDescription) {
+      if (profileDescription.length > 500) {
+        return res.status(400).json({
+          error: "Profile description too long (max 500 characters)",
+          success: false,
+        });
+      }
+      updates.profileDescription = profileDescription;
+    }
+
+    // Handle profile picture upload (if file is provided)
+    if (req.file) {
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            folder: "lawbridge_profile_pictures",
+            public_id: `USER_${user._id}_${Date.now()}`,
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(req.file.buffer);
+      });
+
+      // Delete old profile picture if exists
+      if (user.profilePicture) {
+        try {
+          const oldImagePublicId = user.profilePicture
+            .split("/")
+            .slice(-2)
+            .join("/")
+            .split(".")[0]; 
+          await cloudinary.uploader.destroy(oldImagePublicId);
+        } catch (err) {
+          console.warn("Failed to delete old profile picture:", err.message);
+        }
+      }
+
+      updates.profilePicture = uploadResult.secure_url;
+    }
+
+    // Update user profile in DB
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+    }).select("-password -resetToken -resetExpires -refreshToken");
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found", success: false });
+    }
+
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      user: updatedUser,
+      success: true,
+    });
   } catch (error) {
     console.error("Error updating profile:", error);
     res.status(500).json({ error: "Internal Server Error", success: false });
   }
 };
+
 
 const changePassword = async (req, res) => {
   try {

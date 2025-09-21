@@ -10,8 +10,8 @@ const templates = {
       payable monthly in advance.
       
       Signed,
-      Landlord: __________________
-      Tenant: ____________________
+      Landlord's Name and Signature: __________________
+      Tenant's Name and Signature: ____________________
     `,
     fields: ["landlord", "tenant", "address", "duration", "startDate", "rent"],
   },
@@ -26,8 +26,8 @@ const templates = {
       with a monthly salary of N{{salary}}.
       
       Signed,
-      Employer: __________________
-      Employee: __________________
+      Employer's Name and Signature: __________________
+      Employee's Name and Signature: __________________
     `,
     fields: ["employer", "employee", "position", "startDate", "salary"],
   },
@@ -41,8 +41,8 @@ const templates = {
       shared during the course of business discussions.
       
       Signed,
-      Party A: __________________
-      Party B: __________________
+      Party A's Name and Signature: __________________
+      Party B's Name and Signature: __________________
     `,
     fields: ["partyA", "partyB", "date"],
   },
