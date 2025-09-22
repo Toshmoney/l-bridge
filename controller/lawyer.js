@@ -2,6 +2,13 @@ const Lawyer = require("../models/Lawyer");
 const User = require("../models/User");
 const Consultation = require("../models/Consultation");
 const {sendConsultationEmail} = require("../helper/sendMail");
+const axios = require("axios");
+const Purchase = require("../models/Purchase");
+const CustomTemplate = require("../models/CustomTemplate");
+const Transaction = require("../models/Transaction");
+
+const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
+
 
 
 
@@ -197,6 +204,101 @@ const getLawyerConsultationById = async (req, res) => {
 };
 
 
+const verifyPurchase = async (req, res) => {
+  try {
+    const { reference, templateId } = req.body;
+    const buyerId = req.user.userId;
+
+    if (!reference || !templateId) {
+      return res.status(400).json({ message: "Reference and templateId required" });
+    }
+
+    // 1. Verify with Paystack
+    const verifyRes = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      { headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` } }
+    );
+
+    const verification = verifyRes.data;
+    if (verification.data.status !== "success") {
+      return res.status(400).json({ message: "Payment not successful" });
+    }
+
+    // 2. Get Template + Lawyer
+    const template = await CustomTemplate.findById(templateId).populate("user");
+    if (!template) {
+      return res.status(404).json({ message: "Template not found" });
+    }
+
+    const lawyer = await Lawyer.findOne({user: template.user._id});
+    if (!lawyer) {
+      console.log("lawyer not found");
+      
+      return res.status(404).json({ message: "Lawyer not found" });
+    }
+
+    // 3. Save Purchase
+    const purchase = await Purchase.create({
+      user: buyerId,
+      template: templateId,
+      amount: template.price,
+      reference,
+      status: "success",
+    });
+
+    await Transaction.create({
+      user:lawyer._id,
+      status:"completed",
+      reference_number: reference,
+      description:`N${template.price} received from ${template.templateType? template.templateType : null} template sold!`,
+      type:"credit",
+      amount: template.price
+    })
+
+    // 4. Increment Lawyer’s balance
+    if(!lawyer.balance){
+      lawyer.balance = 0;
+    }
+    lawyer.balance += template.price;
+    await lawyer.save();
+
+    console.log("payment made successfully!", template.price);
+    
+
+    res.status(200).json({
+      message: "Purchase successful",
+      purchase,
+    });
+  } catch (err) {
+    console.error("Verify Purchase Error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+
+const getWallet = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // find lawyer profile
+    const lawyer = await Lawyer.findOne({ user: userId });
+    if (!lawyer) {
+      return res.status(404).json({ message: "Lawyer not found" });
+    }
+
+    // fetch all transactions
+    const transactions = await Transaction.find({ user: lawyer._id })
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({
+      balance: lawyer.balance || 0,
+      transactions,
+    });
+  } catch (err) {
+    console.error("Wallet Error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
 
 
 
@@ -227,5 +329,7 @@ module.exports = {
   getConsultations,
   getLawyerConsultations,
   getLawyerConsultationById,
-  getConsultationById
+  getConsultationById,
+  verifyPurchase,
+  getWallet
 };

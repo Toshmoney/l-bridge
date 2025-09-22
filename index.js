@@ -12,6 +12,8 @@ const documentRoutes = require("./routes/documentRoutes");
 const customTemplateRoutes = require("./routes/customTemplateRoutes");
 const lawyerRoutes = require("./routes/lawyerRoutes");
 const consultationRoutes = require("./routes/consultation");
+const purchaseRoutes = require("./routes/purchaseRoute");
+const walletRoutes = require("./routes/walletRoutes");
 
 
 
@@ -35,6 +37,8 @@ app.use("/api/documents", documentRoutes);
 app.use("/api/custom-templates", customTemplateRoutes);
 app.use("/api/lawyers", lawyerRoutes);
 app.use("/api/consultations", consultationRoutes);
+app.use("/api", purchaseRoutes);
+app.use("/api", walletRoutes);
 
 
 app.listen(port, async()=>{

@@ -4,6 +4,7 @@ const {
   getLawyers,
   getLawyerById,
   verifyLawyer,
+  verifyPurchase,
 } = require("../controller/lawyer");
 const { isLoggin, isAdmin } = require("../middleware/Authenticate");
 
@@ -19,6 +20,10 @@ router.route("/:id")
 
 router.route("/:id/verify")
   .patch(isLoggin, isAdmin, verifyLawyer);
+  
+router.route("/purchase-template/verify")
+    .post(isLoggin, verifyPurchase);
+
 
 
 
