@@ -7,6 +7,10 @@ const customTemplateSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+    buyer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
     title: {
       type: String,
       required: true,

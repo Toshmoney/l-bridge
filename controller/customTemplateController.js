@@ -1,11 +1,16 @@
 const CustomTemplate = require("../models/CustomTemplate");
+const Purchase = require("../models/Purchase");
 // Create a new custom template
 const createCustomTemplate = async (req, res) => {
   try {
-    const { title, fields, content, visibility, templateType } = req.body;
+    const { title, fields, content, visibility, templateType, price } = req.body;
 
     if (!title || !fields || !content || !templateType) {
       return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if(!price){
+      return res.status(400).json({message: "Template amount is required!"})
     }
 
     const template = await CustomTemplate.create({
@@ -38,6 +43,32 @@ const getCustomTemplates = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+// Get only purchased templates for the client
+const getPurchasedTemplates = async (req, res) => {
+  try {
+    const purchases = await Purchase.find({ user: req.user.userId }).select("template");
+
+    if (!purchases || purchases.length === 0) {
+      return res.status(404).json({
+        message: "You've not bought any template, kindly visit the template market to buy now",
+      });
+    }
+
+    const purchasedTemplateIds = purchases.map((p) => p.template);
+
+    const templates = await CustomTemplate.find({
+      _id: { $in: purchasedTemplateIds },
+    }).populate("user", "name role");
+
+    res.json(templates);
+  } catch (error) {
+    console.error("Get Purchased Templates Error:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
 
 // get user owned templates
 const getUserOwnedCustomTemplates = async (req, res) => {
@@ -125,4 +156,6 @@ module.exports = {
   getCustomTemplates,
   getCustomTemplateById,
   updateCustomTemplate,
-  deleteCustomTemplate };
+  deleteCustomTemplate,
+  getPurchasedTemplates
+};

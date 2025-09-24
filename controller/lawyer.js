@@ -14,9 +14,13 @@ const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY;
 
 const registerLawyer = async (req, res) => {
   try {
-    const { specialization, barCertificate } = req.body;
+    const { specialization, barCertificate, consultationFee } = req.body;
     if (!specialization || specialization.length === 0 || !barCertificate) {
       return res.status(400).json({ message: "Specialization and bar certificate are required" });
+    }
+
+    if(!consultationFee){
+      return res.status(400).json({message:"consultation fee is required!"})
     }
 
     // if specialization is not an array, convert it to an array
@@ -50,7 +54,8 @@ const registerLawyer = async (req, res) => {
     const lawyer = new Lawyer({
       user: req.user.userId,
       specialization,
-      barCertificate
+      barCertificate,
+      consultationFee
     });
 
     await lawyer.save();
@@ -230,10 +235,8 @@ const verifyPurchase = async (req, res) => {
       return res.status(404).json({ message: "Template not found" });
     }
 
-    const lawyer = await Lawyer.findOne({user: template.user._id});
+    const lawyer = await Lawyer.findOne({ user: template.user._id });
     if (!lawyer) {
-      console.log("lawyer not found");
-      
       return res.status(404).json({ message: "Lawyer not found" });
     }
 
@@ -247,33 +250,31 @@ const verifyPurchase = async (req, res) => {
     });
 
     await Transaction.create({
-      user:lawyer._id,
-      status:"completed",
+      user: lawyer._id,
+      status: "completed",
       reference_number: reference,
-      description:`N${template.price} received from ${template.templateType? template.templateType : null} template sold!`,
-      type:"credit",
-      amount: template.price
-    })
+      description: `₦${template.price} received from ${template.templateType || "custom"} template sold!`,
+      type: "credit",
+      amount: template.price,
+    });
 
     // 4. Increment Lawyer’s balance
-    if(!lawyer.balance){
-      lawyer.balance = 0;
-    }
-    lawyer.balance += template.price;
-    await lawyer.save();
+    lawyer.balance = (lawyer.balance || 0) + template.price;
 
-    console.log("payment made successfully!", template.price);
-    
+    template.buyer = buyerId;
+
+    await Promise.all([lawyer.save(), template.save()]);
 
     res.status(200).json({
       message: "Purchase successful",
       purchase,
     });
   } catch (err) {
-    console.error("Verify Purchase Error:", err);
+    console.error("Verify Purchase Error:", err.response?.data || err.message);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
 
 
 const getWallet = async (req, res) => {
@@ -296,6 +297,50 @@ const getWallet = async (req, res) => {
     });
   } catch (err) {
     console.error("Wallet Error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+const withdrawMoney = async (req, res) => {
+  try {
+    const userId = req.user.userId; // from auth middleware
+    const { amount, bankAccount } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid withdrawal amount" });
+    }
+
+    // Get lawyer wallet
+    const lawyer = await Lawyer.findOne({ user: userId });
+    if (!lawyer) {
+      return res.status(404).json({ message: "Lawyer not found" });
+    }
+
+    if (lawyer.balance < amount) {
+      return res.status(400).json({ message: "Insufficient balance" });
+    }
+
+    // Deduct balance
+    lawyer.balance -= amount;
+    await lawyer.save();
+
+    // Create transaction
+    const trx = await Transaction.create({
+      user: lawyer._id,
+      type: "debit",
+      amount,
+      status: "pending", // maybe admin needs to approve
+      reference_number: `WD_${Date.now()}`,
+      description: `Withdrawal of ₦${amount} to ${bankAccount || "bank account"}`,
+    });
+
+    res.status(200).json({
+      message: "Withdrawal request submitted successfully",
+      balance: lawyer.balance,
+      transaction: trx,
+    });
+  } catch (err) {
+    console.error("Withdraw Error:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
@@ -331,5 +376,6 @@ module.exports = {
   getLawyerConsultationById,
   getConsultationById,
   verifyPurchase,
-  getWallet
+  getWallet,
+  withdrawMoney
 };

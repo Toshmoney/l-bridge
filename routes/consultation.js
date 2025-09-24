@@ -10,7 +10,7 @@ router.route("/")
   .get(isLoggin, getConsultations);
 
 
-router.route("/:id")
+router.route("single/:id")
   .get(isLoggin, getConsultationById);
 
 

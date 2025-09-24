@@ -127,11 +127,11 @@ const withdrawalRequest = async(req, res)=>{
     let account_name = '';
     let bank_code = '';
     let message = ''
-    const minimumWithdrawal = Number(10000);
+    const minimumWithdrawal = Number(1000);
     let val = Number(amount);
 
 
-    let wallet = await Lawyer.findOne({ user: user });
+    let wallet = await Lawyer.findOne({ user: user.userId });
     if (!wallet) {
         return res.status(404).json({ error: "User wallet not found" });
     }

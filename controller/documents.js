@@ -115,7 +115,7 @@ const downloadDocumentPDF = async (req, res) => {
     stream.on("finish", () => {
       res.download(filePath, fileName, (err) => {
         if (err) console.error("Download error:", err);
-        fs.unlinkSync(filePath); // delete after sending
+        fs.unlinkSync(filePath);
       });
     });
   } catch (error) {
