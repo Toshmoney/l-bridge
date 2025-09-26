@@ -8,7 +8,8 @@ const { login,
   profile,
   updateProfile,
   changePassword,
-  getPublicProfile
+  getPublicProfile,
+  getUserById
 } = require("../controller/auth");
 const { isLoggin, isAdmin } = require("../middleware/Authenticate");
 const upload = require("../utils/multer")
@@ -28,6 +29,7 @@ router.route("/profile")
 
 router.route("/change-password").post(isLoggin, changePassword);
 router.route("/user").get(getPublicProfile);
+router.route("/users/:id").get(isLoggin, getUserById);
 
 router.get("/verify-token", isLoggin, (req, res) => {
   res.json({

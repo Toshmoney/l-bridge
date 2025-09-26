@@ -8,6 +8,7 @@ const { generateTokens } = require('../middleware/Token');
 const { log } = require('console');
 const cloudinary = require("../utils/cloudinary")
 const { sendWelcomeEmail } = require('../helper/sendMail');
+const Lawyer = require('../models/Lawyer');
 
 const frontendUrl = process.env.frontendUrl
 const register = async (req, res) => {
@@ -391,6 +392,29 @@ const getPublicProfile = async (req, res) => {
   }
 };
 
+const getUserById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id).select('-password -resetToken -resetExpires -refreshToken');
+    if (!user) {
+      return res.status(404).json({ error: "User not found", success: false });
+    }
+
+    // check if user is a lawyer
+    const lawyer = await Lawyer.findOne({ user: id });
+    if(lawyer){
+      user.isLawyer = true;
+      user.lawyerId = lawyer._id;
+      await user.save();
+    }
+
+    res.status(200).json({ user, success: true });
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    res.status(500).json({ error: error.message, success: false });
+  }
+};
+
 
 
 
@@ -404,5 +428,6 @@ module.exports = {
   profile,
   updateProfile,
   changePassword,
-  getPublicProfile
+  getPublicProfile,
+  getUserById
 };

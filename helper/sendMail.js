@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer")
 
-const sendConsultationEmail = async (lawyerEmail, lawyerName, clientName, topic, scheduledAt) => {
+const sendConsultationEmail = async (lawyerEmail, lawyerName, clientName, topic, scheduledAt, chatId) => {
   try {
     const transporter = nodemailer.createTransport({
       service: "gmail",
@@ -19,7 +19,7 @@ const sendConsultationEmail = async (lawyerEmail, lawyerName, clientName, topic,
         <p>You have a new consultation booking from <b>${clientName}</b>.</p>
         <p><b>Topic:</b> ${topic}</p>
         <p><b>Scheduled At:</b> ${new Date(scheduledAt).toLocaleString()}</p>
-        <p>Please log into your dashboard to view details.</p>
+        <p>Please start a chat with this through <a href="${process.env.frontendUrl}/dashboard/chats/${chatId}">their profile</a></p>
         <br/>
         <p>– Lawbridge's Team</p>
       `,

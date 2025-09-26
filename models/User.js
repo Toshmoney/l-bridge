@@ -17,6 +17,8 @@ const userSchema = new mongoose.Schema({
   refreshToken: String,
   resetToken: String,
   resetExpires: Date,
+  isLawyer: { type: Boolean, default: false },
+  lawyerId: { type: mongoose.Schema.Types.ObjectId, ref: "Lawyer" }
 }, { timestamps: true });
 
 const User = mongoose.model("User", userSchema);

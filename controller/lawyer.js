@@ -128,7 +128,7 @@ const bookConsultation = async (req, res) => {
 
     // Send email notification to lawyer
     const client = await User.findById(req.user.userId);
-    await sendConsultationEmail(lawyer.user.email, lawyer.user.name, client.name, topic, scheduledAt);
+    await sendConsultationEmail(lawyer.user.email, lawyer.user.name, client.name, topic, scheduledAt, req.user.userId);
 
     res.status(201).json({
       message: "Consultation booked successfully",
@@ -143,7 +143,8 @@ const getConsultations = async (req, res) => {
   try {
     const consultations = await Consultation.find({ user: req.user.userId })
       .populate({path: "lawyer", populate: { path: "user", select: "name" }})
-      .populate("user", "name");
+      .populate("user", "name")
+      .sort({ createdAt: -1 });
       if (!consultations || consultations.length === 0) {
         return res.status(404).json({ message: "No consultations found" });
       }
@@ -180,7 +181,8 @@ const getLawyerConsultations = async (req, res) => {
     // Find consultations linked to this lawyer
     const consultations = await Consultation.find({ lawyer: lawyer._id })
       .populate({ path: "lawyer", populate: { path: "user", select: "name" } })
-      .populate("user", "name");
+      .populate("user", "name")
+      .sort({ scheduledAt: -1 });
 
     if (!consultations || consultations.length === 0) {
       return res.status(404).json({ message: "No consultations found" });
