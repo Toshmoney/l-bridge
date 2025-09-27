@@ -67,7 +67,41 @@ const sendWelcomeEmail = async (name, email) => {
   }
 };
 
+// send email after user sent a message to lawyer
+
+const sendMessageNotificationEmail = async (lawyerEmail, lawyerName, clientName, message, chatId) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+    const mailOptions = {
+      from: `"Lawbridge " <${process.env.EMAIL_USER}>`,
+      to: lawyerEmail,
+      subject: `New Message from ${clientName}`,
+      html: `
+        <h2>Hello ${lawyerName},</h2>
+        <p>You have received a new message from <b>${clientName}</b>:</p>
+        <blockquote style="border-left: 4px solid #ccc; margin: 10px 0; padding-left: 10px; color: #555;">
+          ${message}
+        </blockquote>
+        <p>Please respond to them through <a href="${process.env.frontendUrl}/dashboard/chats/${chatId}">their profile</a></p>
+        <br/>
+        <p>– Lawbridge's Team</p>
+      `,
+    };
+    await transporter.sendMail(mailOptions);
+    console.log("Message notification email sent to:", lawyerEmail);
+  } catch (error) {
+    console.error("Email error:", error.message);
+  }
+};
+
 module.exports = {
   sendConsultationEmail,
-  sendWelcomeEmail
+  sendWelcomeEmail,
+  sendMessageNotificationEmail,
 }
