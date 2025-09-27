@@ -100,6 +100,10 @@ const getLawyerById = async (req, res) => {
       .populate("consultations");
 
     if (!lawyer) return res.status(404).json({ message: "Lawyer not found" });
+    if(!lawyer.consultationFee){
+      lawyer.consultationFee = 0;
+      await lawyer.save();
+    }
 
     res.json(lawyer);
   } catch (error) {
