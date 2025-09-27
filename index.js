@@ -28,7 +28,7 @@ const port = 4000;
 // middlewares
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cors({ origin: "https://lawbridge.com.ng", credentials: true }));
+app.use(cors({ origin: ["https://lawbridge.com.ng", "www.lawbridge.com.ng",'https://www.lawbridge.com.ng',"http://localhost:3000", "*"], credentials: true }));
 app.use(morgan("dev"));
 
 app.get("/test", (req, res) => {
@@ -50,7 +50,7 @@ app.use("/api", chatRoutes);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "https://lawbridge.com.ng", // frontend URL
+    origin: ["https://lawbridge.com.ng", "www.lawbridge.com.ng", 'https://www.lawbridge.com.ng', "http://localhost:3000"], // frontend URL
     methods: ["GET", "POST"],
   },
 });
